@@ -13,6 +13,10 @@ function decodeBase64(value: string): Uint8Array {
   return bytes;
 }
 
+function asArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+}
+
 function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
   if (a.length !== b.length) return false;
   let diff = 0;
@@ -49,14 +53,14 @@ export async function verifyAgentMailWebhook(input: {
 
   const key = await crypto.subtle.importKey(
     "raw",
-    webhookSecretBytes(input.secret),
+    asArrayBuffer(webhookSecretBytes(input.secret)),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],
   );
   const signedContent = `${input.headers.id}.${input.headers.timestamp}.${input.rawBody}`;
   const expected = new Uint8Array(
-    await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(signedContent)),
+    await crypto.subtle.sign("HMAC", key, asArrayBuffer(new TextEncoder().encode(signedContent))),
   );
 
   for (const token of input.headers.signature.split(" ")) {
