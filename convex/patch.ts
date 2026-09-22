@@ -113,12 +113,12 @@ export const saveDiscoveredCandidates = mutationGeneric({
 
     for (const candidate of args.candidates) {
       const candidateKey = normalizeCandidateKey(candidate);
-      const existing = await ctx.db
-        .query("candidates")
-        .withIndex("by_repairId_and_candidateKey", (q) =>
-          q.eq("repairId", args.repairId).eq("candidateKey", candidateKey),
-        )
-        .unique();
+      const existing = (
+        await ctx.db
+          .query("candidates")
+          .withIndex("by_repairId", (q) => q.eq("repairId", args.repairId))
+          .collect()
+      ).find((item) => item.candidateKey === candidateKey);
 
       const email = cleanOptional(candidate.email);
       if (existing) {
@@ -183,12 +183,12 @@ export const startOutreach = mutationGeneric({
       throw new Error("Repair candidate not found for this repair.");
     }
 
-    const existing = await ctx.db
-      .query("outreach")
-      .withIndex("by_repairId_and_candidateId", (q) =>
-        q.eq("repairId", args.repairId).eq("candidateId", args.candidateId),
-      )
-      .unique();
+    const existing = (
+      await ctx.db
+        .query("outreach")
+        .withIndex("by_repairId", (q) => q.eq("repairId", args.repairId))
+        .collect()
+    ).find((item) => item.candidateId === args.candidateId);
 
     if (existing) {
       return {
