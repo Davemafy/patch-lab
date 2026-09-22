@@ -231,6 +231,7 @@ export const markOutreachSent = mutationGeneric({
   args: {
     outreachId: v.id("outreach"),
     providerMessageId: v.string(),
+    providerThreadId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const outreach = await ctx.db.get(args.outreachId);
@@ -252,10 +253,22 @@ export const markOutreachSent = mutationGeneric({
       throw new Error("Provider message is already attached to another outreach.");
     }
 
+    const providerThreadId = cleanOptional(args.providerThreadId);
+    if (providerThreadId) {
+      const duplicateThread = await ctx.db
+        .query("outreach")
+        .withIndex("by_providerThreadId", (q) => q.eq("providerThreadId", providerThreadId))
+        .unique();
+      if (duplicateThread && duplicateThread._id !== args.outreachId) {
+        throw new Error("Provider thread is already attached to another outreach.");
+      }
+    }
+
     const now = Date.now();
     await ctx.db.patch(args.outreachId, {
       status: "sent",
       providerMessageId,
+      ...(providerThreadId ? { providerThreadId } : {}),
       error: undefined,
       sentAt: now,
       updatedAt: now,
@@ -316,6 +329,8 @@ export const recordInboundReply = mutationGeneric({
     priceAmount: nullableNumber,
     currency: nullableString,
     note: nullableString,
+    extractionStatus: v.optional(v.union(v.literal("ok"), v.literal("failed"))),
+    extractionError: v.optional(v.string()),
     receivedAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -360,6 +375,8 @@ export const recordInboundReply = mutationGeneric({
       priceAmount: args.priceAmount,
       currency: args.currency,
       note: args.note,
+      ...(args.extractionStatus ? { extractionStatus: args.extractionStatus } : {}),
+      ...(cleanOptional(args.extractionError) ? { extractionError: args.extractionError!.trim() } : {}),
       receivedAt,
       createdAt: now,
     });
@@ -481,6 +498,7 @@ export const getRepair = queryGeneric({
               id: outreachRecord._id,
               status: outreachRecord.status,
               providerMessageId: outreachRecord.providerMessageId ?? null,
+              providerThreadId: outreachRecord.providerThreadId ?? null,
               error: outreachRecord.error ?? null,
               sentAt: outreachRecord.sentAt ?? null,
             }
@@ -495,6 +513,8 @@ export const getRepair = queryGeneric({
           priceAmount: reply.priceAmount,
           currency: reply.currency,
           note: reply.note,
+          extractionStatus: reply.extractionStatus ?? "ok",
+          extractionError: reply.extractionError ?? null,
           receivedAt: reply.receivedAt,
         })),
         latestReply: candidateReplies[0]
@@ -506,6 +526,8 @@ export const getRepair = queryGeneric({
               priceAmount: candidateReplies[0].priceAmount,
               currency: candidateReplies[0].currency,
               note: candidateReplies[0].note,
+              extractionStatus: candidateReplies[0].extractionStatus ?? "ok",
+              extractionError: candidateReplies[0].extractionError ?? null,
               receivedAt: candidateReplies[0].receivedAt,
             }
           : null,
@@ -538,6 +560,54 @@ export const getRepair = queryGeneric({
           replyId: event.replyId ?? null,
           at: event.at,
         })),
+    };
+  },
+});
+
+export const getCandidateContext = queryGeneric({
+  args: { candidateId: v.id("candidates") },
+  handler: async (ctx, args) => {
+    const candidate = await ctx.db.get(args.candidateId);
+    if (!candidate) return null;
+    const repair = await ctx.db.get(candidate.repairId);
+    if (!repair) return null;
+    return {
+      repair: {
+        id: repair._id,
+        description: repair.description,
+        area: repair.area,
+        photoUrl: repair.photoUrl ?? null,
+        status: repair.status,
+        createdAt: repair.createdAt,
+      },
+      candidate: {
+        id: candidate._id,
+        repairId: candidate.repairId,
+        name: candidate.name,
+        website: candidate.website,
+        email: candidate.email ?? null,
+        serviceEvidence: candidate.serviceEvidence,
+        sourceUrl: candidate.sourceUrl,
+      },
+    };
+  },
+});
+
+export const findOutreachByThreadId = queryGeneric({
+  args: { providerThreadId: v.string() },
+  handler: async (ctx, args) => {
+    const providerThreadId = args.providerThreadId.trim();
+    if (!providerThreadId) return null;
+    const outreach = await ctx.db
+      .query("outreach")
+      .withIndex("by_providerThreadId", (q) => q.eq("providerThreadId", providerThreadId))
+      .unique();
+    if (!outreach) return null;
+    return {
+      outreachId: outreach._id,
+      repairId: outreach.repairId,
+      candidateId: outreach.candidateId,
+      status: outreach.status,
     };
   },
 });
