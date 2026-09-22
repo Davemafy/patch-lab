@@ -12,8 +12,16 @@ export type CreateRepairInput = {
 
 export type ReplyListener = (reply: RepairReply) => void;
 
+export type RepairSnapshot = {
+  repair: RepairRequest;
+  candidates: RepairPersonCandidate[];
+  replies: RepairReply[];
+  chosenId: string | null;
+};
+
 export type RepairGateway = {
   mode: "preview" | "live";
+  loadRepair?(repairId: string): Promise<RepairSnapshot | null>;
   createRepair(input: CreateRepairInput): Promise<RepairRequest>;
   findCandidates(repair: RepairRequest): Promise<RepairPersonCandidate[]>;
   askForPriceAndTime(
