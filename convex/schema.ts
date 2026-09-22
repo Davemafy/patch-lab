@@ -62,6 +62,7 @@ export default defineSchema({
     idempotencyKey: v.optional(v.string()),
     status: outreachStatus,
     providerMessageId: v.optional(v.string()),
+    providerThreadId: v.optional(v.string()),
     error: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -70,7 +71,8 @@ export default defineSchema({
   })
     .index("by_repairId", ["repairId"])
     .index("by_repairId_and_candidateId", ["repairId", "candidateId"])
-    .index("by_providerMessageId", ["providerMessageId"]),
+    .index("by_providerMessageId", ["providerMessageId"])
+    .index("by_providerThreadId", ["providerThreadId"]),
 
   replies: defineTable({
     repairId: v.id("repairs"),
@@ -83,6 +85,8 @@ export default defineSchema({
     priceAmount: v.union(v.number(), v.null()),
     currency: v.union(v.string(), v.null()),
     note: v.union(v.string(), v.null()),
+    extractionStatus: v.optional(v.union(v.literal("ok"), v.literal("failed"))),
+    extractionError: v.optional(v.string()),
     receivedAt: v.number(),
     createdAt: v.number(),
   })
