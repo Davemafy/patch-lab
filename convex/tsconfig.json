@@ -8,8 +8,16 @@
     "module": "ESNext",
     "isolatedModules": true,
     "target": "ESNext",
-    "lib": ["ES2021", "DOM"],
-    "noEmit": true
+    "lib": [
+      "ES2021",
+      "DOM"
+    ],
+    "noEmit": true,
+    "types": [
+      "node"
+    ]
   },
-  "include": ["./**/*"]
+  "include": [
+    "./**/*"
+  ]
 }
