@@ -1,0 +1,39 @@
+name: deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Require Convex deploy key
+        shell: bash
+        run: |
+          if [ -z "$CONVEX_DEPLOY_KEY" ]; then
+            echo "::error::Add CONVEX_DEPLOY_KEY as a repository Actions secret."
+            exit 1
+          fi
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Deploy Convex backend
+        run: npx convex deploy
+      - name: Upload Convex-hosted frontend
+        run: npx @convex-dev/static-hosting upload --build --component staticHosting
