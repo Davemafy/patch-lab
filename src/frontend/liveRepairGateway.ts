@@ -119,19 +119,18 @@ export function createLiveRepairGateway(url: string): RepairGateway {
 
     watchReplies(repair, _candidates, onReply) {
       const seen = new Set<string>();
-      return client.onUpdate(
-        anyApi.patch.getRepair,
-        { repairId: repair.id },
-        (value: unknown) => {
-          const snapshot = snapshotFrom(value as RepairView | null);
-          if (!snapshot) return;
-          for (const reply of snapshot.replies) {
-            if (seen.has(reply.id)) continue;
-            seen.add(reply.id);
-            onReply(reply);
-          }
-        },
-      );
+      const watch = client.watchQuery(anyApi.patch.getRepair, { repairId: repair.id });
+      const emitReplies = () => {
+        const snapshot = snapshotFrom((watch.localQueryResult() ?? null) as RepairView | null);
+        if (!snapshot) return;
+        for (const reply of snapshot.replies) {
+          if (seen.has(reply.id)) continue;
+          seen.add(reply.id);
+          onReply(reply);
+        }
+      };
+      emitReplies();
+      return watch.onUpdate(emitReplies);
     },
 
     async choosePerson(repair, personId) {
