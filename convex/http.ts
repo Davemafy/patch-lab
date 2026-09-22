@@ -1,4 +1,6 @@
 import { anyApi, httpActionGeneric, httpRouter } from "convex/server";
+import { registerStaticRoutes } from "@convex-dev/static-hosting";
+import { components } from "./_generated/api";
 import { readAgentMailWebhookHeaders, verifyAgentMailWebhook } from "../src/mail/webhookVerification.js";
 
 const http = httpRouter();
@@ -41,5 +43,7 @@ http.route({
     return new Response(null, { status: 204 });
   }),
 });
+
+registerStaticRoutes(http, components.staticHosting);
 
 export default http;
