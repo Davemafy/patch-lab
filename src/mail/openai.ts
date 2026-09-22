@@ -1,6 +1,6 @@
 import type { ReplyFacts } from "./types";
 
-const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
+const AI_RESPONSES_URL = "https://api.groq.com/openai/v1/responses";
 
 const EMPTY_FACTS: ReplyFacts = {
   canTakeJob: null,
@@ -103,11 +103,11 @@ export async function extractReplyFacts(input: {
   fetchImpl?: typeof fetch;
 }): Promise<ReplyFacts> {
   if (!input.rawText.trim()) return EMPTY_FACTS;
-  if (!input.apiKey.trim()) throw new Error("OPENAI_API_KEY is required");
-  if (!input.model.trim()) throw new Error("OPENAI_MODEL is required");
+  if (!input.apiKey.trim()) throw new Error("GROQ_API_KEY is required");
+  if (!input.model.trim()) throw new Error("GROQ_MODEL is required");
 
   const fetchImpl = input.fetchImpl ?? fetch;
-  const response = await fetchImpl(OPENAI_RESPONSES_URL, {
+  const response = await fetchImpl(AI_RESPONSES_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${input.apiKey}`,
@@ -136,12 +136,12 @@ export async function extractReplyFacts(input: {
 
   const body = await response.text();
   if (!response.ok) {
-    throw new Error(`OpenAI extraction failed (${response.status}): ${body.slice(0, 500)}`);
+    throw new Error(`GPT-OSS extraction failed (${response.status}): ${body.slice(0, 500)}`);
   }
 
   const payload = JSON.parse(body) as ResponsesPayload;
   const text = responseText(payload);
-  if (!text) throw new Error("OpenAI response did not contain output text");
+  if (!text) throw new Error("GPT-OSS response did not contain output text");
 
   return validateFacts(JSON.parse(text), input.rawText);
 }
